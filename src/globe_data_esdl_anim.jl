@@ -1,11 +1,16 @@
 using GLMakie, FileIO, Downloads
 using YAXArrays, Zarr, NetCDF
 include("utils.jl")
+# get some data
+port = "https://s3.bgc-jena.mpg.de:9000/"
+bucket = "esdl-esdc-v2.1.1"
+store = "esdc-8d-0.25deg-1x720x1440-2.1.1.zarr"
+path = joinpath(port, bucket, store)
 
-store ="gs://cmip6/CMIP6/ScenarioMIP/DKRZ/MPI-ESM1-2-HR/ssp585/r1i1p1f1/3hr/tas/gn/v20190710/"
-g = open_dataset(zopen(store, consolidated=true))
-c = g["tas"]
-sub_c = c[time = (Date("2023-04-18"), Date("2023-06-30"))]
+c = Cube(open_dataset(zopen(path,consolidated=true)))
+c = c[Variable="air_temperature_2m"] # get one Variable
+
+sub_c = c[time = (Date("2013-01-01"), Date("2018-12-31"))] # select time span
 sub_c = readcubedata(sub_c) # Since is small enough, let's fetch everything into memory.
 
 lon, lat = sub_c.lon, sub_c.lat
@@ -22,8 +27,10 @@ fig, ax, obj=surface(x, y, z;
     #colormap = Reverse(:Hiroshige),
     colormap = [:white, :snow2, :snow3, :grey50, :dodgerblue, :orangered, :orange, :yellow, :gold],
     colorrange=(-40,40),
-    figure=(; resolution=(800,800), backgroundcolor=:grey10),
+    shading=false,
+    figure=(; resolution=(850,800)),
     axis=(; show_axis=false))
+Colorbar(fig[1,2], obj, height=Relative(0.5))
 zoom!(ax.scene, cameracontrols(ax.scene), 0.65)
 fig
 
@@ -31,3 +38,5 @@ for t in axes(data,3)
     d[] = ex_data(lon,lat,data[:,:,t]) .- 273.15
     sleep(0.01)
 end
+
+
